@@ -1,0 +1,7 @@
+streamlit
+pyPDF2 
+sentence_transformers
+chromadb
+langchain
+auto_gptq
+llama-cpp-python
