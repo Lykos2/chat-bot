@@ -22,9 +22,15 @@ from langchain import FAISS
 device="cuda" if torch.cuda.is_available() else "cpu"
 
 device_type="cuda" if torch.cuda.is_available() else "cpu"
-Model_folder_path = "/root/UI/models"
-Embedding_folder_path="/root/UI/Emb"
+cwd = os.getcwd()
 
+# Define the paths for the "models" and "Emb" folders
+Model_folder_path = os.path.join(cwd, "models")
+Embedding_folder_path = os.path.join(cwd, "Emb")
+
+# Create the "models" and "Emb" folders if they don't already exist
+os.makedirs(Model_folder_path, exist_ok=True)
+os.makedirs(Embedding_folder_path, exist_ok=True)
 
 with st.sidebar:
     st.title('🦙💬 PDF-Chatbot')
@@ -34,8 +40,7 @@ with st.sidebar:
         (get_file_list(Model_folder_path)))
     if MODEL =="other":
         MODEL= st.text_input("Enter the link of the Hugging Face model:")
-        MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
-        llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
+
             
     EMB = st.selectbox(
         'Available Hugging Face Embeddings ',
@@ -47,6 +52,9 @@ with st.sidebar:
                 model_kwargs={'device':device},
                 encode_kwargs={'normalize_embeddings':False}
             )
+    if 'embedding' not in st.session_state:
+        st.session_state['emb']=embedding
+
 
     files=[]
     for uploaded_file in uploaded_files:
@@ -69,29 +77,14 @@ with st.sidebar:
     st.write('Embedding selected:', EMB)
     result=st.button("Done")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if result:
+   
+    if MODEL!="":
+        MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
+        llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
+        st.session_state['llm']=llm
+    else:
+        st.write("please give the model from hugging face")
 
     text_splitter=RecursiveCharacterTextSplitter(
                 chunk_size=1000,
@@ -100,36 +93,43 @@ if result:
             )
 
     chunks=text_splitter.split_text(st.session_state['text'])
-    faiss = FAISS.from_texts(chunks, embedding)
-    st.session_state['faiss']=faiss
+    
+    faiss = FAISS.from_texts(chunks, st.session_state['emb'])
+    if 'faiss' not in st.session_state:
+        st.session_state['faiss']=faiss
 
 
     
-    retriever = st.session_state['fiass']
+    retriever = st.session_state['faiss']
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer,\
-          just say that you don't know, don't try to make up an answer.
+    just say that you don't know, don't try to make up an answer.
 
-        {context}
+    {context}
 
-        {history}
-        Question: {question}
-        Helpful Answer:"""
+    {history}
+    Question: {question}
+    Helpful Answer:"""
 
     prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template)
     memory = ConversationBufferMemory(input_key="question", memory_key="history")
-    qa = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever = retriever,
-    return_source_documents=True,
-    chain_type_kwargs={"prompt": prompt, "memory": memory},
-    )
-    prompt = st.chat_input("Say something")
-    if prompt:
-        st.write(f"User has sent the following prompt: {prompt}")
-        response=qa(prompt)
-        answer, docs = response["result"], response["source_documents"]
-        st.write(answer)
+
+  
+    if 'QA'  not in st.session_state:
+        qa = RetrievalQA.from_chain_type(
+        llm=st.session_state['llm'],
+        chain_type="stuff",
+        retriever = retriever,
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": prompt, "memory": memory},
+        )
+        st.session_state["QA"] = qa
+prompt = st.chat_input("Say something")
+if prompt:
+    st.write(f"User has sent the following prompt: {prompt}")
+    response = st.session_state["QA"](prompt)
+    answer, docs = response["result"], response["source_documents"]
+    st.write(answer)
+
 
 
 

@@ -31,4 +31,19 @@
 # MODEL_BASENAME = "orca-mini-3b.ggmlv3.q4_0.bin"
 
 
+        response = st.session_state["QA"](prompt)
+        answer, docs = response["result"], response["source_documents"]
+        st.write(answer)
+
+    if 'QA'  not in st.session_state:
+        qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever = retriever,
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": prompt, "memory": memory},
+        )
+        st.session_state["QA"] = qa
+
+
 
