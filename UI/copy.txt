@@ -45,5 +45,3 @@
         )
         st.session_state["QA"] = qa
 
-
-

@@ -1,9 +1,11 @@
+
 import os 
 import io 
 import torch 
 import streamlit as st
 from PyPDF2 import PdfReader
 from helper import get_file_list
+from helper import read_file_to_list
 from helper import process_pdf
 from helper import load_model
 from langchain.vectorstores import Chroma
@@ -24,36 +26,35 @@ device="cuda" if torch.cuda.is_available() else "cpu"
 device_type="cuda" if torch.cuda.is_available() else "cpu"
 cwd = os.getcwd()
 
-# Define the paths for the "models" and "Emb" folders
-Model_folder_path = os.path.join(cwd, "models")
-Embedding_folder_path = os.path.join(cwd, "Emb")
 
-# Create the "models" and "Emb" folders if they don't already exist
-os.makedirs(Model_folder_path, exist_ok=True)
-os.makedirs(Embedding_folder_path, exist_ok=True)
+
+Model_file_path = os.path.join(cwd, "models.txt")
+Embedding_file_path = os.path.join(cwd, "Emb.txt")
+os.makedirs(os.path.dirname(Model_file_path), exist_ok=True)
+os.makedirs(os.path.dirname(Embedding_file_path), exist_ok=True)
+
+
+
+
+
 
 with st.sidebar:
     st.title('🦙💬 PDF-Chatbot')
     uploaded_files = st.file_uploader("Choose a PDF File", accept_multiple_files=True)
     MODEL = st.selectbox(
         'Available Hugging Face models ',
-        (get_file_list(Model_folder_path)))
+        ( read_file_to_list(Model_file_path)))
     if MODEL =="other":
         MODEL= st.text_input("Enter the link of the Hugging Face model:")
 
             
     EMB = st.selectbox(
         'Available Hugging Face Embeddings ',
-        (get_file_list(Embedding_folder_path)))
+        ( read_file_to_list(Embedding_file_path)))
     if EMB =="other":
         EMB= st.text_input('# Link of huggingface Embeddings',)
-    embedding=HuggingFaceEmbeddings(
-                model_name=EMB,
-                model_kwargs={'device':device},
-                encode_kwargs={'normalize_embeddings':False}
-            )
-    if 'embedding' not in st.session_state:
-        st.session_state['emb']=embedding
+
+
 
 
     files=[]
@@ -72,19 +73,34 @@ with st.sidebar:
             files.append(uploaded_file.name)
         else:
             pass
- 
-    st.write('Model selected:', MODEL)
-    st.write('Embedding selected:', EMB)
+    if EMB=="":
+        st.write('please select the Emb')
+    elif MODEL=="":
+        st.write('please select the model')
+    else:
+        
+        st.write('Model selected:', MODEL)
+        st.write('Embedding selected:', EMB)
+
     result=st.button("Done")
 
 if result:
-   
     if MODEL!="":
+   
         MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
         llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
         st.session_state['llm']=llm
-    else:
-        st.write("please give the model from hugging face")
+   
+  
+    embedding=HuggingFaceEmbeddings(
+                model_name=EMB,
+                model_kwargs={'device':device},
+                encode_kwargs={'normalize_embeddings':False}
+            )
+    if 'embedding' not in st.session_state:
+        st.session_state['emb']=embedding
+
+        
 
     text_splitter=RecursiveCharacterTextSplitter(
                 chunk_size=1000,
@@ -123,20 +139,13 @@ if result:
         chain_type_kwargs={"prompt": prompt, "memory": memory},
         )
         st.session_state["QA"] = qa
+
+
+
+
 prompt = st.chat_input("Say something")
 if prompt:
     st.write(f"User has sent the following prompt: {prompt}")
     response = st.session_state["QA"](prompt)
     answer, docs = response["result"], response["source_documents"]
     st.write(answer)
-
-
-
-
-
-
-
-
-
-
-

@@ -31,6 +31,27 @@ def get_file_list(folder_path):
     names.append("other")
     return names
 
+def read_file_to_list(file_path):
+    try:
+        # Initialize an empty list to store the lines from the file
+        lines = []
+
+        # Open the file in read mode ('r')
+        with open(file_path, 'r') as file:
+            # Read each line and append it to the 'lines' list
+            for line in file:
+                lines.append(line.strip())  # Use .strip() to remove newline characters
+
+        # Return the list containing the lines from the file
+        lines.append("other")
+        return lines
+    except FileNotFoundError:
+        # Handle the case where the file does not exist
+        return []
+    except Exception as e:
+        # Handle other exceptions, e.g., permission errors
+        print(f"An error occurred: {e}")
+        return []
 
 
 
