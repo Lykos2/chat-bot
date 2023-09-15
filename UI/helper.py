@@ -2,6 +2,7 @@ import os
 import io 
 import torch 
 from PyPDF2 import PdfReader
+import logging 
 
 from langchain.embeddings import HuggingFaceEmbeddings
 from auto_gptq import AutoGPTQForCausalLM
@@ -54,7 +55,6 @@ def read_file_to_list(file_path):
         return []
 
 
-
 def load_model(device_type, model_id, model_basename=None):
     """
     Select a model for text generation using the HuggingFace library.
@@ -73,9 +73,12 @@ def load_model(device_type, model_id, model_basename=None):
     Raises:
         ValueError: If an unsupported model or device type is provided.
     """
+    logging.info(f"Loading Model: {model_id}, on: {device_type}")
+    logging.info("This action can take a few minutes!")
 
     if model_basename is not None:
         if ".ggml" in model_basename:
+            logging.info("Using Llamacpp for GGML quantized models")
             model_path = hf_hub_download(repo_id=model_id, filename=model_basename)
             max_ctx_size = 2048
             kwargs = {
@@ -93,14 +96,15 @@ def load_model(device_type, model_id, model_basename=None):
         else:
             # The code supports all huggingface models that ends with GPTQ and have some variation
             # of .no-act.order or .safetensors in their HF repo.
-         
+            logging.info("Using AutoGPTQForCausalLM for quantized models")
 
             if ".safetensors" in model_basename:
                 # Remove the ".safetensors" ending if present
                 model_basename = model_basename.replace(".safetensors", "")
 
             tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
-   
+            logging.info("Tokenizer loaded")
+
             model = AutoGPTQForCausalLM.from_quantized(
                 model_id,
                 model_basename=model_basename,
@@ -114,9 +118,9 @@ def load_model(device_type, model_id, model_basename=None):
         device_type.lower() == "cuda"
     ):  # The code supports all huggingface models that ends with -HF or which have a .bin
         # file in their HF repo.
- 
+        logging.info("Using AutoModelForCausalLM for full models")
         tokenizer = AutoTokenizer.from_pretrained(model_id)
-
+        logging.info("Tokenizer loaded")
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
@@ -128,7 +132,7 @@ def load_model(device_type, model_id, model_basename=None):
         )
         model.tie_weights()
     else:
-
+        logging.info("Using LlamaTokenizer")
         tokenizer = LlamaTokenizer.from_pretrained(model_id)
         model = LlamaForCausalLM.from_pretrained(model_id)
 
@@ -151,7 +155,8 @@ def load_model(device_type, model_id, model_basename=None):
     )
 
     local_llm = HuggingFacePipeline(pipeline=pipe)
-  
+    logging.info("Local LLM Loaded")
+
     return local_llm
 
 def process_pdf(pdf_reader):

@@ -88,6 +88,7 @@ if result:
     if MODEL!="":
    
         MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
+        #MODEL_BASENAME = "nous-hermes-13b-GPTQ-4bit-128g.no-act.order"
         llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
         st.session_state['llm']=llm
    
