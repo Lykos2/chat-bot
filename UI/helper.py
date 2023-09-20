@@ -56,6 +56,7 @@ def read_file_to_list(file_path):
 
 
 def load_model(device_type, model_id, model_basename=None):
+    print(model_basename)
     """
     Select a model for text generation using the HuggingFace library.
     If you are running this for the first time, it will download a model for you.

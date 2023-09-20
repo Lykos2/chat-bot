@@ -46,8 +46,7 @@ with st.sidebar:
         ( read_file_to_list(Model_file_path)))
     if MODEL =="other":
         MODEL= st.text_input("Enter the link of the Hugging Face model:")
-
-            
+    MODEL_BASENAME=st.text_input('#MODEL_BASENAME')            
     EMB = st.selectbox(
         'Available Hugging Face Embeddings ',
         ( read_file_to_list(Embedding_file_path)))
@@ -86,8 +85,11 @@ with st.sidebar:
 
 if result:
     if MODEL!="":
-        MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
-        #MODEL_BASENAME = "nous-hermes-13b-GPTQ-4bit-128g.no-act.order"
+        if MODEL_BASENAME!="":
+            MODEL_BASENAME=MODEL_BASENAME
+        else:
+            MODEL_BASENAME=None
+
         llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
         st.session_state['llm']=llm
    
@@ -110,10 +112,14 @@ if result:
 
     chunks=text_splitter.split_text(st.session_state['text'])
     
-    faiss = FAISS.from_texts(chunks, st.session_state['emb'])
+  
     if 'faiss' not in st.session_state:
+        faiss = FAISS.from_texts(chunks, st.session_state['emb'])
         st.session_state['faiss']=faiss
-    retriever=st.session_state['faiss'].as_retriever()
+    if "RETRIEVER" not in st.session_state:
+        RETRIEVER = faiss.as_retriever()
+        st.session_state.RETRIEVER = RETRIEVER
+    #retriever=st.session_state['faiss'].as_retriever()
     
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer,\
     just say that you don't know, don't try to make up an answer.
@@ -134,7 +140,7 @@ if result:
         qa = RetrievalQA.from_chain_type(
         llm=st.session_state['llm'],
         chain_type="stuff",
-        retriever = retriever,
+        retriever = st.session_state['RETRIEVER'],
         return_source_documents=True,
         chain_type_kwargs={"prompt": prompt, "memory": memory},
         )
