@@ -86,9 +86,8 @@ with st.sidebar:
 
 if result:
     if MODEL!="":
-   
-        MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
-        #MODEL_BASENAME = "nous-hermes-13b-GPTQ-4bit-128g.no-act.order"
+        #MODEL_BASENAME="llama-2-7b-chat.ggmlv3.q4_0.bin"
+        MODEL_BASENAME = "nous-hermes-13b-GPTQ-4bit-128g.no-act.order"
         llm = load_model(device_type, model_id=MODEL, model_basename=MODEL_BASENAME)
         st.session_state['llm']=llm
    
@@ -114,10 +113,7 @@ if result:
     faiss = FAISS.from_texts(chunks, st.session_state['emb'])
     if 'faiss' not in st.session_state:
         st.session_state['faiss']=faiss
-
-
     
-    retriever = st.session_state['faiss']
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer,\
     just say that you don't know, don't try to make up an answer.
 
@@ -130,12 +126,14 @@ if result:
     prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template)
     memory = ConversationBufferMemory(input_key="question", memory_key="history")
 
-  
+
+ 
     if 'QA'  not in st.session_state:
+
         qa = RetrievalQA.from_chain_type(
         llm=st.session_state['llm'],
         chain_type="stuff",
-        retriever = retriever,
+        retriever =  st.session_state['faiss'],
         return_source_documents=True,
         chain_type_kwargs={"prompt": prompt, "memory": memory},
         )
@@ -144,9 +142,9 @@ if result:
 
 
 
-prompt = st.chat_input("Say something")
-if prompt:
-    st.write(f"User has sent the following prompt: {prompt}")
-    response = st.session_state["QA"](prompt)
+prompt1 = st.chat_input("Say something")
+if prompt1:
+    st.write(f"User has sent the following prompt: {prompt1}")
+    response = st.session_state["QA"](prompt1)
     answer, docs = response["result"], response["source_documents"]
     st.write(answer)

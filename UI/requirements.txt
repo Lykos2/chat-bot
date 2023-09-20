@@ -30,3 +30,5 @@ Streamlit-extras
 
 # Excel File Manipulation
 openpyxl
+PyPDF2 
+auto_gptq
